@@ -41,5 +41,13 @@ BounceServer -> Client2: DATA
 
 First, Client1 sends the authentication message "hello", then requests to join channel 172. Then Client2 sends the authentication message and requests to join channel 172. Now all data sent from Client1 is forwardrd to Client2, and vice versa
 
+### Security
+Other than the authentication message to prevent unwanted connections, as of yet, the bounce server has no implemented encryption features, so all data is sent in plaintext. This is to allow the user to wrap the bounce server in any security features that are needed. A good example of this is using an HTTP(s) proxy through [Apache](https://httpd.apache.org/). This allows the http server to handle SSL and wraps the data in an HTTP connection making the connection more friendly to some routers/networks.
+
+Here is a tutorial on how to setup an http proxy server with Apache (example uses ssh, but can be easily extended to forward to this bounce server):
+https://geek.co.il/2017/04/18/ssh-over-https-for-fame-profit
+
+The same tutorial also explains how to setup SSL using [letsencrypt](https://letsencrypt.org/)
+
 Here is an example image which shows how the the bounce server can be used to connect two computers behind NATs using the case of the mill program suite.
 ![Image](https://raw.githubusercontent.com/BeyondPerception/BounceServer/master/CBITDiagram.png)

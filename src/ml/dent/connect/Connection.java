@@ -48,7 +48,7 @@ public class Connection {
     }
 
     public void write(Object msg) {
-        channel.writeAndFlush(msg);
+        getChannel().writeAndFlush(msg);
     }
 
     public Channel getChannel() {
@@ -56,7 +56,7 @@ public class Connection {
     }
 
     public SocketAddress remoteAddress() {
-        return channel.remoteAddress();
+        return getChannel().remoteAddress();
     }
 
     public State getState() {
@@ -90,7 +90,7 @@ public class Connection {
      * @return A ChannelFuture that is notified when this channel is closed
      */
     public ChannelFuture closeFuture() {
-        return channel.closeFuture();
+        return getChannel().closeFuture();
     }
 
     private String closeReason = "Closed by remote host";
@@ -101,7 +101,7 @@ public class Connection {
     }
 
     public void close() {
-        channel.close();
+        getChannel().close();
     }
 
     public String getCloseReason() {

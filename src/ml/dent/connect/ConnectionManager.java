@@ -1,7 +1,7 @@
 package ml.dent.connect;
 
 import io.netty.buffer.ByteBuf;
-import io.netty.buffer.PooledByteBufAllocator;
+import io.netty.buffer.Unpooled;
 import io.netty.util.ReferenceCountUtil;
 import ml.dent.app.Main;
 
@@ -82,8 +82,6 @@ public class ConnectionManager {
         }
     }
 
-    private PooledByteBufAllocator allocator = new PooledByteBufAllocator();
-
     private void handleConnected(Connection connection, Object msg) {
         if (connection.getState() != State.CONNECTED) {
             return;
@@ -110,7 +108,7 @@ public class ConnectionManager {
             } else if (i != bytes.length && j == authString.length()) { // tested & correct
                 // end of auth string, but still more to packet
                 connection.setState(State.AUTHENTICATED);
-                ByteBuf nextBuf = allocator.buffer(bytes.length - i);
+                ByteBuf nextBuf = Unpooled.buffer(bytes.length - i);
                 nextBuf.writeBytes(bytes, i, bytes.length - i);
 
                 authIndex.remove(connection);
@@ -158,7 +156,7 @@ public class ConnectionManager {
                 }
                 connection.setState(State.READY);
                 if (i != bytes.length) {
-                    ByteBuf nextBuf = allocator.buffer(bytes.length - i);
+                    ByteBuf nextBuf = Unpooled.buffer(bytes.length - i);
                     nextBuf.writeBytes(bytes, i, bytes.length - i);
                     handleConnectionRead(connection.remoteAddress(), nextBuf);
                 }

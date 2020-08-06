@@ -42,7 +42,7 @@ public class Main {
             setVerbosity(args);
         }, "Sets the verbosity to the given argument.\n" +
                 "\t1 - Print connections and disconnections (DEFAULT)\n" +
-                "\t2 - Print state changes\n" +
+                "\t2 - Print state changes and the full stack trace of exceptions\n" +
                 "\t3 - Print packet size of reads\n" +
                 "\t4 - Print bytes received\n\n" +
                 "\tchannel <CHANNEL_NUM> - be verbose on just this channel. -1 for all channels"));

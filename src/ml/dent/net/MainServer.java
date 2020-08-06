@@ -3,9 +3,9 @@ package ml.dent.net;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.*;
-import io.netty.channel.nio.NioEventLoopGroup;
+import io.netty.channel.epoll.EpollEventLoopGroup;
+import io.netty.channel.epoll.EpollServerSocketChannel;
 import io.netty.channel.socket.SocketChannel;
-import io.netty.channel.socket.nio.NioServerSocketChannel;
 import ml.dent.app.Main;
 import ml.dent.connect.Connection;
 import ml.dent.connect.ConnectionManager;
@@ -51,11 +51,11 @@ public class MainServer {
      *                              bind.
      */
     public ChannelFuture listen() throws InterruptedException {
-        parentGroup = new NioEventLoopGroup();
-        childGroup = new NioEventLoopGroup();
+        parentGroup = new EpollEventLoopGroup();
+        childGroup = new EpollEventLoopGroup();
 
         ServerBootstrap boot = new ServerBootstrap();
-        boot.group(parentGroup, childGroup).channel(NioServerSocketChannel.class)
+        boot.group(parentGroup, childGroup).channel(EpollServerSocketChannel.class)
                 .childHandler(new ChannelInitializer<SocketChannel>() {
                     @Override
                     protected void initChannel(SocketChannel ch) {
@@ -104,6 +104,14 @@ public class MainServer {
         }
 
         @Override
+        public void channelWritabilityChanged(ChannelHandlerContext ctx) throws Exception {
+            if (ctx.channel().isWritable()) {
+                ctx.read();
+            }
+            super.channelWritabilityChanged(ctx);
+        }
+
+        @Override
         public void channelRead(ChannelHandlerContext ctx, Object msg) {
             if (Main.getVerbosity() >= 3 && Main.getVerboseChannel() == -1) {
                 Connection connection = connectionManager.get(ctx.channel().remoteAddress());
@@ -126,6 +134,9 @@ public class MainServer {
         public void exceptionCaught(ChannelHandlerContext ctx, Throwable cause) {
             Connection connection = connectionManager.get(ctx.channel().remoteAddress());
             if (connection != null) {
+                if (Main.getVerbosity() >= 2) {
+                    cause.printStackTrace();
+                }
                 connectionManager.get(ctx.channel().remoteAddress()).close(cause.getMessage());
             } else {
                 cause.printStackTrace();

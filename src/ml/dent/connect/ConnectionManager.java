@@ -2,6 +2,7 @@ package ml.dent.connect;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
+import io.netty.channel.ChannelOption;
 import io.netty.util.ReferenceCountUtil;
 import ml.dent.app.Main;
 
@@ -9,6 +10,8 @@ import java.net.SocketAddress;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentSkipListMap;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.ReentrantLock;
 
 import static ml.dent.connect.Connection.State;
 
@@ -19,6 +22,7 @@ public class ConnectionManager {
     private ConnectionGroup[] pairs;
 
     public static final int MAX_PAIRS = 65535;
+
 
     public ConnectionManager() {
         channels = new ConcurrentHashMap<>();
@@ -184,19 +188,33 @@ public class ConnectionManager {
         return false;
     }
 
+    public void setOverloaded(SocketAddress addr) {
+        Connection connection = get(addr);
+        pairs[connection.getChannelNumber()].channelOverloaded(connection);
+    }
+
+    public void setReady(SocketAddress addr) {
+        Connection connection = get(addr);
+        pairs[connection.getChannelNumber()].channelReady(connection);
+    }
+
     /**
      * A class that links two connections in software
      */
     private static class ConnectionGroup {
-        private Set<Connection> connections;
-        private int             maxConnections;
+        private Set<Connection> connections = Collections.newSetFromMap(new ConcurrentHashMap<>());
+        private Set<Connection> overloaded  = Collections.newSetFromMap(new ConcurrentHashMap<>());
+
+        private ReentrantLock lock          = new ReentrantLock();
+        private AtomicBoolean changingState = new AtomicBoolean(false);
+
+        private int maxConnections;
 
         public ConnectionGroup() {
             this(2);
         }
 
         public ConnectionGroup(int maxConnections) {
-            connections = Collections.newSetFromMap(new ConcurrentHashMap<>());
             this.maxConnections = maxConnections;
         }
 
@@ -205,7 +223,10 @@ public class ConnectionManager {
                 if (connections.size() >= maxConnections) {
                     throw new IllegalArgumentException("Connection Group Full");
                 }
-                n.closeFuture().addListener(future -> connections.remove(n));
+                n.closeFuture().addListener(future -> {
+                    connections.remove(n);
+                    channelReady(n);
+                });
                 connections.add(n);
             }
         }
@@ -214,6 +235,10 @@ public class ConnectionManager {
          * Writes the given message to the other connections
          */
         public void write(Connection incoming, Object msg) {
+            if (changingState.get()) {
+                lock.lock();
+                lock.unlock();
+            }
             try {
                 if (Main.getVerboseChannel() == incoming.getChannelNumber() && Main.getVerbosity() >= 3) {
                     System.out.println(incoming + ": " + msg);
@@ -232,6 +257,42 @@ public class ConnectionManager {
             } finally {
                 ReferenceCountUtil.release(msg);
             }
+        }
+
+        /**
+         * Hold writes on the other channels in this connection group to relieve the pressure on the provided connection
+         *
+         * @param notReady The connection that is no longer writeable
+         */
+        public void channelOverloaded(Connection notReady) {
+            changingState.set(true);
+            lock.lock();
+            overloaded.add(notReady);
+            for (Connection connection : connections) {
+                if (connection != notReady) {
+                    connection.getChannel().config().setOption(ChannelOption.AUTO_READ, false);
+                    connection.setState(State.WAITING);
+                }
+            }
+            lock.unlock();
+            changingState.set(false);
+        }
+
+        /**
+         * Tell this connection group that this connection is now ready to receive data
+         */
+        public void channelReady(Connection ready) {
+            changingState.set(true);
+            lock.lock();
+            overloaded.remove(ready);
+            if (overloaded.size() == 0) {
+                for (Connection connection : connections) {
+                    connection.getChannel().config().setOption(ChannelOption.AUTO_READ, true);
+                    connection.setState(State.READY);
+                }
+            }
+            lock.unlock();
+            changingState.set(false);
         }
     }
 }

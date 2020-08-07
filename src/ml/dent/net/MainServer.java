@@ -64,7 +64,6 @@ public class MainServer {
                 }).option(ChannelOption.SO_BACKLOG, backlog).childOption(ChannelOption.SO_KEEPALIVE, true);
 
         ChannelFuture future = boot.bind(bindAddress, bindPort).sync();
-
         return future.channel().closeFuture();
     }
 
@@ -106,7 +105,9 @@ public class MainServer {
         @Override
         public void channelWritabilityChanged(ChannelHandlerContext ctx) throws Exception {
             if (ctx.channel().isWritable()) {
-                ctx.read();
+                connectionManager.setReady(ctx.channel().remoteAddress());
+            } else {
+                connectionManager.setOverloaded(ctx.channel().remoteAddress());
             }
             super.channelWritabilityChanged(ctx);
         }

@@ -17,7 +17,8 @@ public class Connection {
     public enum State {
         CONNECTED,
         AUTHENTICATED,
-        READY
+        READY,
+        WAITING
     }
 
     /**

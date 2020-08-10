@@ -6,6 +6,7 @@ import io.netty.channel.*;
 import io.netty.channel.epoll.EpollEventLoopGroup;
 import io.netty.channel.epoll.EpollServerSocketChannel;
 import io.netty.channel.socket.SocketChannel;
+import ml.dent.app.Logger;
 import ml.dent.app.Main;
 import ml.dent.connect.Connection;
 import ml.dent.connect.ConnectionManager;
@@ -15,6 +16,8 @@ import java.util.Arrays;
 import java.util.Collection;
 
 public class MainServer {
+
+    private static Logger logger = Logger.getInstance();
 
     private int         bindPort;
     private int         backlog;
@@ -88,7 +91,7 @@ public class MainServer {
         @Override
         public void channelActive(ChannelHandlerContext ctx) throws Exception {
             Connection connection = new Connection(ctx.channel());
-            System.out.println(ctx.channel().remoteAddress() + " connected");
+            logger.logln(ctx.channel().remoteAddress() + " connected");
             connection.write(Integer.toHexString(ConnectionManager.MAX_PAIRS).length() + "-" + "BounceServer_" + Main.VERSION + "\n");
             connectionManager.register(connection);
             super.channelActive(ctx);
@@ -97,7 +100,7 @@ public class MainServer {
         @Override
         public void channelInactive(ChannelHandlerContext ctx) throws Exception {
             Connection connection = connectionManager.get(ctx.channel().remoteAddress());
-            System.out.println(connection.remoteAddress() + " disconnected: " + connection.getCloseReason());
+            logger.logln(connection.remoteAddress() + " disconnected: " + connection.getCloseReason());
             connectionManager.remove(connection);
             super.channelInactive(ctx);
         }
@@ -117,15 +120,15 @@ public class MainServer {
             if (Main.getVerbosity() >= 3 && Main.getVerboseChannel() == -1) {
                 Connection connection = connectionManager.get(ctx.channel().remoteAddress());
                 if (connection != null) {
-                    System.out.println(connection + ": " + msg);
+                    logger.logln(connection + ": " + msg);
                 } else {
-                    System.out.println(ctx.channel().remoteAddress() + ": " + msg);
+                    logger.logln(ctx.channel().remoteAddress() + ": " + msg);
                 }
                 if (Main.getVerbosity() >= 4) {
                     ByteBuf buf = (ByteBuf) msg;
                     byte[] bytes = new byte[buf.readableBytes()];
                     buf.getBytes(buf.readerIndex(), bytes);
-                    System.out.println(Arrays.toString(bytes));
+                    logger.logln(Arrays.toString(bytes));
                 }
             }
             connectionManager.handleConnectionRead(ctx.channel().remoteAddress(), msg);
@@ -136,11 +139,11 @@ public class MainServer {
             Connection connection = connectionManager.get(ctx.channel().remoteAddress());
             if (connection != null) {
                 if (Main.getVerbosity() >= 2) {
-                    cause.printStackTrace();
+                    logger.log(cause);
                 }
                 connectionManager.get(ctx.channel().remoteAddress()).close(cause.getMessage());
             } else {
-                cause.printStackTrace();
+                logger.log(cause);
                 ctx.close();
             }
         }

@@ -4,16 +4,20 @@ import io.netty.channel.ChannelFuture;
 import ml.dent.connect.Connection;
 import ml.dent.net.MainServer;
 
+import java.io.InputStream;
 import java.util.*;
+import java.util.concurrent.CountDownLatch;
 
 public class Main {
-
     public static final String VERSION = "1.0";
+
+    private static Logger logger;
 
     public static  int     PORT            = 1111;
     private static int     VERBOSITY       = 1;
     private static int     VERBOSE_CHANNEL = -1;
     private static boolean ECHO            = false;
+    private static boolean DAEMON          = false;
 
     private static final String authString = "hi";
 
@@ -56,12 +60,31 @@ public class Main {
         }, "Kills the specified connection"));
     }
 
-    private static void executeCommands() {
-        Scanner file = new Scanner(System.in);
+    private static Scanner file;
 
+    private static CountDownLatch controlConnected = new CountDownLatch(1);
+
+    public static void setIn(InputStream in) {
+        file = new Scanner(in);
+        controlConnected.countDown();
+    }
+
+    private static void executeCommands() {
         while (true) {
-            System.out.print("> ");
-            String[] input = file.nextLine().trim().split(" ");
+            try {
+                controlConnected.await();
+            } catch (InterruptedException e) {
+                continue;
+            }
+            logger.print("> ");
+            String line;
+            try {
+                line = file.nextLine();
+            } catch (Exception e) {
+                controlConnected = new CountDownLatch(1);
+                continue;
+            }
+            String[] input = line.trim().split(" ");
 
             if (input[0].isEmpty()) {
                 continue;
@@ -70,13 +93,13 @@ public class Main {
             ArrayList<Command> possibleCommands = parseCommand(input[0]);
 
             if (possibleCommands.size() > 1) {
-                System.out.println("Ambiguous command. Possible options: ");
+                logger.println("Ambiguous command. Possible options: ");
                 for (Command com : possibleCommands) {
-                    System.out.println(com.getName());
+                    logger.println(com.getName());
                 }
                 continue;
             } else if (possibleCommands.size() == 0) {
-                System.out.println("Unknown command. Possible options: ");
+                logger.println("Unknown command. Possible options: ");
                 printHelp();
                 continue;
             }
@@ -116,13 +139,13 @@ public class Main {
 
     private static void printHelp() {
         for (Command com : commands) {
-            System.out.println(com);
+            logger.println(com);
         }
     }
 
     private static void printCommand(String[] args) {
         if (args.length <= 0) {
-            System.out.println("Too few arguments to print command");
+            logger.println("Too few arguments to print command");
             return;
         }
         String query = args[0];
@@ -140,12 +163,12 @@ public class Main {
         Collection<Connection> connections = server.getConnections();
 
         for (Connection connection : connections) {
-            System.out.println(connection);
+            logger.println(connection);
         }
     }
 
     private static void printChannels() {
-        System.out.println("Active channels:");
+        logger.println("Active channels:");
         TreeMap<Integer, List<Connection>> channels = new TreeMap<>();
         Collection<Connection> connections = server.getConnections();
 
@@ -155,14 +178,14 @@ public class Main {
         }
 
         for (Integer val : channels.keySet()) {
-            System.out.println(val + " - " + channels.get(val));
+            logger.println(val + " - " + channels.get(val));
         }
     }
 
     private static void kill(String[] args) {
         if (args.length <= 0) {
-            System.out.println("Too few arguments to kill command");
-            System.out.println("Expecting connection id or fully qualified address");
+            logger.println("Too few arguments to kill command");
+            logger.println("Expecting connection id or fully qualified address");
             return;
         }
         String val = args[0];
@@ -170,7 +193,7 @@ public class Main {
             // kill by id
             int id = Integer.parseInt(val);
             if (!server.kill(id)) {
-                System.out.println("Unable to find connection with id: " + val);
+                logger.println("Unable to find connection with id: " + val);
             }
         } else {
             // kill by address
@@ -181,31 +204,31 @@ public class Main {
                     return;
                 }
             }
-            System.out.println("Unable to find connection with address: " + val);
+            logger.println("Unable to find connection with address: " + val);
         }
     }
 
     private static void setVerbosity(String[] args) {
         if (args.length <= 0) {
-            System.out.println("Too few arguments to verbose command");
-            System.out.println(parseCommand("verbosity").get(0));
+            logger.println("Too few arguments to verbose command");
+            logger.println(parseCommand("verbosity").get(0));
             return;
         }
         String val = args[0];
         if (!val.matches("[0-9]+") && !val.equals("channel")) {
-            System.out.println("Argument must be a number or \"channel\"");
-            System.out.println(parseCommand("verbose").get(0));
+            logger.println("Argument must be a number or \"channel\"");
+            logger.println(parseCommand("verbose").get(0));
             return;
         }
         if (val.equals("channel")) {
             if (args.length <= 1) {
-                System.out.println("Too few arguments to verbose channel command");
-                System.out.println("Requires channel number argument");
+                logger.println("Too few arguments to verbose channel command");
+                logger.println("Requires channel number argument");
                 return;
             }
             String channelNum = args[1];
             if (!channelNum.matches("[0-9]+")) {
-                System.out.println("Argument to verbose channel command must be a number");
+                logger.println("Argument to verbose channel command must be a number");
                 return;
             }
             VERBOSE_CHANNEL = Integer.parseInt(channelNum);
@@ -216,8 +239,8 @@ public class Main {
 
     private static void setEcho(String[] args) {
         if (args.length <= 0) {
-            System.out.println("Too few arguments to echo command");
-            System.out.println("Options - ON or OFF");
+            logger.println("Too few arguments to echo command");
+            logger.println("Options - ON or OFF");
             return;
         }
         String val = args[0].toLowerCase();
@@ -269,19 +292,22 @@ public class Main {
                     case "-e":
                         ECHO = true;
                         break;
+                    case "-d":
+                        DAEMON = true;
+                        break;
                     case "-p":
                         if (i == args.length - 1) {
-                            System.out.println("-p requires number argument between 1 and 65535");
+                            logger.logln("-p requires number argument between 1 and 65535");
                             System.exit(1);
                         }
                         String portString = args[i + 1];
                         if (!portString.matches("[0-9]+")) {
-                            System.out.println("-p requires number argument between 1 and 65535");
+                            logger.logln("-p requires number argument between 1 and 65535");
                             System.exit(1);
                         }
                         int port = Integer.parseInt(portString);
                         if (port < 1 || port > 65535) {
-                            System.out.println("-p requires number argument between 1 and 65535");
+                            logger.logln("-p requires number argument between 1 and 65535");
                             System.exit(1);
                         }
                         PORT = port;
@@ -289,15 +315,20 @@ public class Main {
                 }
             }
         }
-
+        logger = new Logger(DAEMON);
+        if (DAEMON) {
+            System.out.println("Control server started on port 32565");
+        } else {
+            setIn(System.in);
+        }
         server = new MainServer(PORT);
-        System.out.println("Starting bounce server on port [" + PORT + "]...");
+        logger.logln("Starting bounce server on port [" + PORT + "]...");
         ChannelFuture cf = server.listen();
         cf.addListener(future -> {
-            System.out.println("Shutting down server");
+            logger.logln("Shutting down server");
             System.exit(0);
         });
-        System.out.println("Server started. Waiting for connections");
+        logger.logln("Server started. Waiting for connections");
 
         executeCommands();
     }

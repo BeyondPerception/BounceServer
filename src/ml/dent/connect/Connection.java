@@ -4,6 +4,7 @@ import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.util.CharsetUtil;
+import ml.dent.app.Logger;
 import ml.dent.app.Main;
 
 import java.net.SocketAddress;
@@ -12,6 +13,8 @@ import java.util.concurrent.ScheduledThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 
 public class Connection {
+    private static Logger logger = Logger.getInstance();
+
     private Channel channel;
 
     public enum State {
@@ -66,7 +69,7 @@ public class Connection {
 
     public void setState(State newState) {
         if (Main.getVerbosity() >= 2) {
-            System.out.println(remoteAddress() + " changed state to " + newState);
+            logger.logln(remoteAddress() + " changed state to " + newState);
         }
         state = newState;
     }

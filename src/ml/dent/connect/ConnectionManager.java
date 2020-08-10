@@ -4,6 +4,7 @@ import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.ChannelOption;
 import io.netty.util.ReferenceCountUtil;
+import ml.dent.app.Logger;
 import ml.dent.app.Main;
 
 import java.net.SocketAddress;
@@ -16,13 +17,15 @@ import java.util.concurrent.locks.ReentrantLock;
 import static ml.dent.connect.Connection.State;
 
 public class ConnectionManager {
+
+    private static Logger logger = Logger.getInstance();
+
     private ConcurrentHashMap<SocketAddress, Connection> channels;
     private ConcurrentSkipListMap<Integer, Connection>   ids;
 
     private ConnectionGroup[] pairs;
 
     public static final int MAX_PAIRS = 65535;
-
 
     public ConnectionManager() {
         channels = new ConcurrentHashMap<>();
@@ -241,12 +244,12 @@ public class ConnectionManager {
             }
             try {
                 if (Main.getVerboseChannel() == incoming.getChannelNumber() && Main.getVerbosity() >= 3) {
-                    System.out.println(incoming + ": " + msg);
+                    logger.logln(incoming + ": " + msg);
                     if (Main.getVerbosity() >= 4) {
                         ByteBuf buf = (ByteBuf) msg;
                         byte[] bytes = new byte[buf.readableBytes()];
                         buf.getBytes(buf.readerIndex(), bytes);
-                        System.out.println(Arrays.toString(bytes));
+                        logger.logln(Arrays.toString(bytes));
                     }
                 }
                 for (Connection connection : connections) {

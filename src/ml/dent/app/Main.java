@@ -2,6 +2,7 @@ package ml.dent.app;
 
 import io.netty.channel.ChannelFuture;
 import ml.dent.connect.Connection;
+import ml.dent.connect.ConnectionManager;
 import ml.dent.net.MainServer;
 
 import java.io.InputStream;
@@ -297,20 +298,49 @@ public class Main {
                         break;
                     case "-p":
                         if (i == args.length - 1) {
-                            logger.logln("-p requires number argument between 1 and 65535");
+                            logger.logln("-p requires an integer argument between 1 and 65535");
                             System.exit(1);
                         }
                         String portString = args[i + 1];
                         if (!portString.matches("[0-9]+")) {
-                            logger.logln("-p requires number argument between 1 and 65535");
+                            logger.logln("-p requires an integer argument between 1 and 65535");
                             System.exit(1);
                         }
                         int port = Integer.parseInt(portString);
                         if (port < 1 || port > 65535) {
-                            logger.logln("-p requires number argument between 1 and 65535");
+                            logger.logln("-p requires an integer argument between 1 and 65535");
                             System.exit(1);
                         }
                         PORT = port;
+                        i++;
+                        break;
+                    case "--max-connections":
+                        if (i == args.length - 1) {
+                            logger.logln("--max-connections requires an integer argument");
+                            System.exit(1);
+                        }
+                        String maxConnectionsString = args[i + 1];
+                        if (!maxConnectionsString.matches("[0-9]+")) {
+                            logger.logln("--max-connections requires an integer argument");
+                            System.exit(1);
+                        }
+                        int maxConnections = Integer.parseInt(maxConnectionsString);
+                        ConnectionManager.setMaxConnections(maxConnections);
+                        i++;
+                        break;
+                    case "--max-pairs":
+                        if (i == args.length - 1) {
+                            logger.logln("--max-pairs requires an integer argument");
+                            System.exit(1);
+                        }
+                        String maxPairsString = args[i + 1];
+                        if (!maxPairsString.matches("[0-9]+")) {
+                            logger.logln("--max-pairs requires an integer argument");
+                            System.exit(1);
+                        }
+                        int maxPairs = Integer.parseInt(maxPairsString);
+                        ConnectionManager.setMaxPairs(maxPairs);
+                        i++;
                         break;
                 }
             }

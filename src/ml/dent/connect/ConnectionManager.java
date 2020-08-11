@@ -18,14 +18,15 @@ import static ml.dent.connect.Connection.State;
 
 public class ConnectionManager {
 
+    public static int MAX_PAIRS       = 65535;
+    public static int MAX_CONNECTIONS = 2;
+
     private static Logger logger = Logger.getInstance();
 
     private ConcurrentHashMap<SocketAddress, Connection> channels;
     private ConcurrentSkipListMap<Integer, Connection>   ids;
 
     private ConnectionGroup[] pairs;
-
-    public static final int MAX_PAIRS = 65535;
 
     public ConnectionManager() {
         channels = new ConcurrentHashMap<>();
@@ -153,7 +154,7 @@ public class ConnectionManager {
             if (channelNum < MAX_PAIRS) {
                 connection.setChannelNumber(channelNum);
                 if (pairs[channelNum] == null) {
-                    pairs[channelNum] = new ConnectionGroup();
+                    pairs[channelNum] = new ConnectionGroup(MAX_CONNECTIONS);
                 }
                 try {
                     pairs[channelNum].addConnection(connection);
@@ -199,6 +200,20 @@ public class ConnectionManager {
     public void setReady(SocketAddress addr) {
         Connection connection = get(addr);
         pairs[connection.getChannelNumber()].channelReady(connection);
+    }
+
+    /**
+     * This method will only take effect if called before the instantiation of a ConnectionManager instance
+     */
+    public static void setMaxPairs(int n) {
+        MAX_PAIRS = n;
+    }
+
+    /**
+     * This method will only take effect if called before the instantiation of a ConnectionManager instance
+     */
+    public static void setMaxConnections(int n) {
+        MAX_CONNECTIONS = n;
     }
 
     /**

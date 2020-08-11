@@ -212,7 +212,7 @@ public class Main {
     private static void setVerbosity(String[] args) {
         if (args.length <= 0) {
             logger.println("Too few arguments to verbose command");
-            logger.println(parseCommand("verbosity").get(0));
+            logger.println(parseCommand("verbose").get(0));
             return;
         }
         String val = args[0];

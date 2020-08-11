@@ -1,8 +1,40 @@
 # BounceServer
 
-The most important, and probably most simple, componant of the mill program suite.
+A server that bridges two or more connections in software to avoid port forwarding or dealing with NATs.
 
-This program accepts up to a set amount of connections, writing all data received on a "channel", to all other connections on that channel.
+## Usage
+
+### Command line arguments
+| Argument          | Description                                                                                                                                                                                                     | Requires additional parameter |
+|-------------------|-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------|
+| -e                | Echo data back to sending client                                                                                                                                                                                | No                            |
+| -d                | Start in daemon mode                                                                                                                                                                                            | No                            |
+| -p                | Set bind port of bounce server                                                                                                                                                                                  | Yes, integer port to bind to  |
+| --max-connections | Set max number of connections allowed within a connection group                                                                                                                                                 | Yes, max connection integer   |
+| --max-pairs       | Set the maximum number of connection groups allowed                                                                                                                                                             | Yes, max pairs integer        |
+| -v -vv -vvv -vvvv | Set initial verbosity.<br>1: Print connections and disconnections<br>2: Print state changes and full error stack traces<br>3: Print received packet information (size, type)<br>4: Print all bytes received | No                            |
+
+All arguments must be provided seperately.
+
+#### Daemon Mode:
+Starting the bounce server in daemon mode will open a socket on port `32565`. Accepted connections will then be presented with a command prompt similar to the one in the default interactive mode. All commands from interactive mode will work in this mode as well. The connection to the control socket can simply be closed to exit the command prompt, or the `exit` command may be given. Only one connection may be connected to the control socket at a time. This running mode is meant to allow this server to be run as a service, then allow a connection to monitor and control the state of the bounce server.
+
+#### Max Pairs:
+The maximum number of connection groups this server allows. By default, this number is set to 65536 connection groups. It is recommended to set this number to be a power of 2, as it directly affects the `n` in the version string sent to clients.
+
+#### Max Connections:
+The maximum number of connections allowed in a particular connection group. A connection will be disconnected with the message "Connection Group Full", if it tries to connect to an already filled connection group. Because of certain conditions causing a TCP TIME_WAIT state, it may be recommended to set this number higher than the desired maximum number of connections. The default number is 2.
+
+### Commands
+| Command            | Description                                                    | Parameters                                                        |
+|--------------------|----------------------------------------------------------------|-------------------------------------------------------------------|
+| print              | Prints information about the current bounce server state       | connections, channels                                             |
+| verbose            | Sets the verbosity                                             | 1, 2, 3, or 4                                                     |
+| echo               | Sets whether this server should echo back messages to clients  | on or off                                                         |
+| kill               | Closes the given connection                                    | A connection id(found in print connections),<br>or socket address |
+| stop               | Stop the bounce server                                         | N/A                                                               |
+| exit (daemon only) | Closes the current control connection, but continues listening | N/A                                                               |
+| help               | Print the help menu                                            | N/A                                                               |
 
 ## Protocol Specification
 

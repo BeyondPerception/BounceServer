@@ -126,6 +126,7 @@ public class ConnectionManager {
                 authIndex.put(connection, j);
             } else {
                 // more to packet, more to auth string
+                connection.write("Authentication failure");
                 connection.close("Authentication failure");
             }
         } finally {
@@ -159,16 +160,19 @@ public class ConnectionManager {
                 try {
                     pairs[channelNum].addConnection(connection);
                 } catch (IllegalArgumentException e) {
+                    connection.write(e.getMessage());
                     connection.close(e.getMessage());
                     return;
                 }
                 connection.setState(State.READY);
+                connection.write("READY");
                 if (i != bytes.length) {
                     ByteBuf nextBuf = Unpooled.buffer(bytes.length - i);
                     nextBuf.writeBytes(bytes, i, bytes.length - i);
                     handleConnectionRead(connection.remoteAddress(), nextBuf);
                 }
             } else {
+                connection.write("Failed to negotiate channel number");
                 connection.close("Failed to negotiate channel number");
             }
         } finally {

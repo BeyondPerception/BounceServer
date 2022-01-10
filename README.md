@@ -83,3 +83,6 @@ The same tutorial also explains how to setup SSL using [letsencrypt](https://let
 
 Here is an example image which shows how the the bounce server can be used to connect two computers behind NATs using the case of the mill program suite.
 ![Image](https://raw.githubusercontent.com/BeyondPerception/BounceServer/master/CBITDiagram.png)
+
+## Examples
+See the [MillClientController](https://github.com/BeyondPerception/MillClientController), the [SherlineClientController](https://github.com/BeyondPerception/SherlineClientController), or the [SherlineVideoController](https://github.com/BeyondPerception/SherlineVideoController) for example implementations of clients using the BounceServer.
